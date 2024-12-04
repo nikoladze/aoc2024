@@ -9,14 +9,17 @@ watch = utils.stopwatch()
 
 @watch.measure_time
 def parse(raw_data):
-    table = raw_data.strip().splitlines()
-    return [[(i, j, x) for j, x in enumerate(row)] for i, row in enumerate(table)]
+    return raw_data.strip().splitlines()
 
 
-def rolling(x, n=4):
-    x = list(x)
-    for i in range(len(x) - n + 1):
-        yield x[i : i + n]
+def horizontals(data):
+    for row in data:
+        yield row
+
+
+def verticals(data):
+    for icol in range(len(data[0])):
+        yield [row[icol] for row in data]
 
 
 def iterate(data, i, j, di, dj):
@@ -26,21 +29,10 @@ def iterate(data, i, j, di, dj):
         if i < 0 or j < 0 or i >= nrows or j >= ncols:
             return
         yield data[i][j]
-        i += di
-        j += dj
+        i, j = i + di, j + dj
 
 
-def horizontal(data):
-    for row in data:
-        yield row
-
-
-def vertical(data):
-    for icol in range(len(data[0])):
-        yield [row[icol] for row in data]
-
-
-def diagonal(data):
+def diagonals(data):
     ncols = len(data[0])
     nrows = len(data)
     for icol in range(ncols):
@@ -52,24 +44,23 @@ def diagonal(data):
         yield iterate(data, irow, 0, -1, 1)
 
 
+def rolling(x, n=4):
+    x = list(x)
+    for i in range(len(x) - n + 1):
+        yield "".join(x[i : i + n])
+
+
 @watch.measure_time
 def solve1(data):
-    debug = [["." for __ in range(len(data[0]))] for __ in range(len(data))]
     total = 0
     for sub in chain(
-        horizontal(data),
-        vertical(data),
-        diagonal(data),
+        horizontals(data),
+        verticals(data),
+        diagonals(data),
     ):
         for candidate in rolling(sub):
-            c = "".join(x[2] for x in candidate)
-            if c == "XMAS" or c[::-1] == "XMAS":
-                for i, j, x in candidate:
-                    debug[i][j] = x
+            if candidate in ["XMAS", "SAMX"]:
                 total += 1
-    print()
-    print("\n".join("".join(row) for row in debug))
-    print()
     return total
 
 
@@ -92,7 +83,7 @@ def solve2(data):
     nrows = len(data)
     for i in range(nrows - 3 + 1):
         for j in range(ncols - 3 + 1):
-            if is_xmas([[x[2] for x in row[j : j + 3]] for row in data[i : i + 3]]):
+            if is_xmas([row[j : j + 3] for row in data[i : i + 3]]):
                 total += 1
     return total
 
