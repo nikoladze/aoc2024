@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-from tqdm.auto import tqdm
-from collections import deque
+from functools import partial
+from itertools import cycle
 from pathlib import Path
+
 from aoc import utils
 
 watch = utils.stopwatch()
@@ -22,77 +23,49 @@ def get_start(data):
 
 @watch.measure_time
 def solve1(data):
-    i, j = get_start(data)
-    direction_dict = {
-        ">": (0, 1),
-        "v": (1, 0),
-        "<": (0, -1),
-        "^": (-1, 0),
-    }
-    directions = deque([(0, 1), (1, 0), (0, -1), (-1, 0)])
-    while directions[0] != direction_dict[data[i][j]]:
-        directions.rotate(-1)
     nrows = len(data)
     ncols = len(data[0])
-
+    directions = cycle([(-1, 0), (0, 1), (1, 0), (0, -1)])
+    i, j = get_start(data)
+    di, dj = next(directions)
     visited = set()
-    di, dj = directions[0]
     while i >= 0 and j >= 0 and i < nrows and j < ncols:
         if data[i][j] == "#":
-            directions.rotate(-1)
             i, j = i - di, j - dj  # go back
-            di, dj = directions[0]
+            di, dj = next(directions)
         else:
             visited.add((i, j))
         i, j = i + di, j + dj
-
-    # debug = [[x for x in row] for row in data]
-    # for i, j in visited:
-    #     debug[i][j] = "X"
-    # print("\n".join("".join(row) for row in debug))
-
     return len(visited)
+
+
+def is_loop(data, i, j, obstacle):
+    nrows = len(data)
+    ncols = len(data[0])
+    directions = cycle([(-1, 0), (0, 1), (1, 0), (0, -1)])
+    di, dj = next(directions)
+    visited = set()
+    while i >= 0 and j >= 0 and i < nrows and j < ncols:
+        if data[i][j] == "#" or (i, j) == obstacle:
+            i, j = i - di, j - dj  # go back
+            di, dj = next(directions)
+        else:
+            visited.add((i, j, di, dj))
+        i, j = i + di, j + dj
+        if (i, j, di, dj) in visited:
+            return True
+    return False
 
 
 @watch.measure_time
 def solve2(data):
+    obstacles = []
+    for i, row in enumerate(data):
+        for j, x in enumerate(row):
+            if x == ".":
+                obstacles.append((i, j))
     i, j = get_start(data)
-    direction_dict = {
-        ">": (0, 1),
-        "v": (1, 0),
-        "<": (0, -1),
-        "^": (-1, 0),
-    }
-    nrows = len(data)
-    ncols = len(data[0])
-
-    def is_loop(data, obstacle):
-        i, j = get_start(data)
-        directions = deque([(0, 1), (1, 0), (0, -1), (-1, 0)])
-        while directions[0] != direction_dict[data[i][j]]:
-            directions.rotate(-1)
-        visited = set()
-        di, dj = directions[0]
-        while i >= 0 and j >= 0 and i < nrows and j < ncols:
-            if data[i][j] == "#" or (i, j) == obstacle:
-                directions.rotate(-1)
-                i, j = i - di, j - dj  # go back
-                di, dj = directions[0]
-            else:
-                visited.add((i, j, di, dj))
-            i, j = i + di, j + dj
-            if (i, j, di, dj) in visited:
-                return True
-        return False
-
-    total = 0
-    for i in tqdm(range(nrows)):
-        for j in range(ncols):
-            if data[i][j] != ".":
-                continue
-            if is_loop(data, obstacle=(i, j)):
-                total += 1
-    return total
+    return sum(map(partial(is_loop, data, i, j), obstacles))
 
 
 if __name__ == "__main__":
