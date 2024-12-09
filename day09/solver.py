@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from tqdm.auto import tqdm
 from pathlib import Path
 from aoc import utils
 
@@ -9,7 +8,7 @@ watch = utils.stopwatch()
 
 @watch.measure_time
 def parse(raw_data):
-    return raw_data.strip()
+    return list(map(int, raw_data.strip()))
 
 
 @watch.measure_time
@@ -18,69 +17,69 @@ def solve1(data):
     blocks = []
     for i, x in enumerate(data):
         if i % 2 == 0:
-            blocks += [file_id] * int(x)
+            blocks += [file_id] * x
             file_id += 1
         else:
-            blocks += ["."] * int(x)
+            blocks += ["."] * x
     compacted = []
     for x in list(blocks):
         if len(blocks) == len(compacted):
             break
         while x == ".":
             x = blocks.pop()
-        compacted.append(int(x))
+        compacted.append(x)
     return sum(i * x for i, x in enumerate(compacted))
 
 
 @watch.measure_time
 def solve2(data):
-    file_id = 0
     blocks = []
-    spaces = {}
-    file_pos = {}
+    space_pos_len = {}
+    file_id_pos = {}
+    file_id = 0
     pos = 0
     for i, x in enumerate(data):
         if i % 2 == 0:
-            blocks += [file_id] * int(x)
-            file_pos[file_id] = pos
+            blocks += [file_id] * x
+            file_id_pos[file_id] = pos
             file_id += 1
         else:
-            blocks += ["."] * int(x)
-            spaces[pos] = int(x)
-        pos += int(x)
+            blocks += ["."] * x
+            space_pos_len[pos] = x
+        pos += x
 
-    #print(f"{spaces=}")
+    data_sizes = [x for x in data[::2]]
 
-    data_sizes = [int(x) for x in data[::2]]
+    # small optimization: keep a sorted list of space positions
+    sorted_space_pos = sorted(space_pos_len)
 
     def move(file_id, space_pos):
         file_size = data_sizes[file_id]
+
+        # put file to new space
         for i in range(space_pos, space_pos + file_size):
             blocks[i] = file_id
-        spaces[space_pos + file_size] = spaces[space_pos] - file_size
-        del spaces[space_pos]
-        for i in range(file_pos[file_id], file_pos[file_id] + file_size):
+        # make space at old position
+        for i in range(file_id_pos[file_id], file_id_pos[file_id] + file_size):
             blocks[i] = "."
 
-    #print("".join(map(str, blocks)))
+        # update space position and length
+        new_pos = space_pos + file_size
+        space_pos_len[new_pos] = space_pos_len[space_pos] - file_size
+        del space_pos_len[space_pos]
+        sorted_space_pos.remove(space_pos)
+        sorted_space_pos.append(new_pos)
+        sorted_space_pos.sort()
 
-    #n_empty = len([x for x in blocks if x == "."])
-    for file_id in tqdm(range(len(data_sizes) - 1, -1, -1), disable=False):
-        #print(file_id)
-        data_size = data_sizes[file_id]
-        for space_pos, space_len in sorted(spaces.items(), key=lambda x: x[0]):
-            if space_pos >= file_pos[file_id]:
-                continue
+    for file_id, data_size in reversed(list(enumerate(data_sizes))):
+        for space_pos in list(sorted_space_pos):
+            space_len = space_pos_len[space_pos]
+            if space_pos >= file_id_pos[file_id]:
+                break
             if space_len >= data_size:
-                #print(f"move {file_id} to {space_pos}")
                 move(file_id, space_pos)
-                #assert len([x for x in blocks if x == "."]) == n_empty
-                #input()
-                #print("".join(map(str, blocks)))
-                #print(spaces)
                 break
 
-    #print("".join(map(str, blocks)))
     return sum(i * x for i, x in enumerate(blocks) if x != ".")
 
 
@@ -90,6 +89,3 @@ if __name__ == "__main__":
     print(f"Part 2: {solve2(data)}")
     print()
     watch.print_times()
-
-# 24262669361508: too high
-# part2: 8529293116363: too high
