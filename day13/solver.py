@@ -22,6 +22,16 @@ def parse(raw_data):
     return machines
 
 
+class NotDivisibleError(Exception):
+    pass
+
+
+def ensure_div(a, b):
+    if a % b != 0:
+        raise NotDivisibleError(f"{a} not divisible by {b}")
+    return a // b
+
+
 def solve(data, shift=0):
     """
     x = c * xa + d * xb
@@ -33,27 +43,18 @@ def solve(data, shift=0):
     x / xb - c * xa / xb = y / yb - c * ya / yb
     x / xb - y / yb = c * (xa / xb - ya / yb)
     -> c = (x / xb - y / yb) / (xa / xb - ya / yb)
+         = (x * yb - y * xb) / (xa * yb - ya * xb)
     """
     total = 0
     for (xa, ya), (xb, yb), (x, y) in data:
         x += shift
         y += shift
-
-        c = (x / xb - y / yb) / (xa / xb - ya / yb)
-        d = (x - c * xa) / xb
-
-        eps = 1e-2  # a bit ugly to tune this
-        if abs(round(c) - c) > eps or abs(round(d) - d) > eps:
-            # solution not a round number
+        try:
+            c = ensure_div(x * yb - y * xb, xa * yb - ya * xb)
+            d = ensure_div(x - c * xa, xb)
+        except NotDivisibleError:
             continue
-
-        # check if solution
-        # seems there are no cases of equations without solution
-        assert round((y - round(c) * ya) / yb) == round(d)
-
-        c, d = round(c), round(d)
         total += c * 3 + d
-
     return total
 
 
