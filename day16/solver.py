@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from heapq import heappush, heappop
 from collections import deque
 from pathlib import Path
 from aoc import utils
@@ -22,15 +23,15 @@ def iter_paths(data):
     di, dj = (0, 1)  # facing east
     path = ((i, j, di, dj),)
     score = 0
-    q = deque([(path, score)])
+    q = [(score, path)]
     while q:
-        path, score = q.popleft()
+        score, path = heappop(q)
         i, j, di, dj = path[-1]
         if path[-1] in path[:-1]:
             # have gone here before in the current path from same direction
             continue
         if (i, j) == stop:
-            yield path, score
+            yield score, path
             continue
         if path[-1] in scores and scores[path[-1]] < score:
             # have reached this from same direction (in any path) cheaper
@@ -49,22 +50,22 @@ def iter_paths(data):
             else:
                 # turn
                 new_score = score + 1001
-            q.append((path + ((ii, jj, dii, djj),), new_score))
+            heappush(q, (new_score, path + ((ii, jj, dii, djj),)))
 
 
 @watch.measure_time
 def solve1(data):
-    return min(score for path, score in iter_paths(data))
+    return min(score for score, path in iter_paths(data))
 
 
 @watch.measure_time
 def solve2(data):
     paths = [
-        (set([(i, j) for i, j, di, dj in path]), score)
-        for path, score in iter_paths(data)
+        (score, set([(i, j) for i, j, di, dj in path]))
+        for score, path in iter_paths(data)
     ]
-    min_score = min(score for path, score in paths)
-    best = [path for path, score in paths if score == min_score]
+    min_score = min(score for score, path in paths)
+    best = [path for score, path in paths if score == min_score]
     tiles = set.union(*best)
     return len(tiles)
 
